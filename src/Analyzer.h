@@ -9,6 +9,14 @@
 class I2cAnalyzerSettings;
 class I2cAnalyzerResults;
 
+enum SignalState {
+	SIGNAL_UNKNOWN,
+	SIGNAL_LOW,
+	SIGNAL_RISING,
+	SIGNAL_HIGH,
+	SIGNAL_FALLING,
+};
+
 enum FrameTypes {
 	FRAME_TYPE_ADDRESS,
 	FRAME_TYPE_DATA,
@@ -40,13 +48,15 @@ class I2cAnalyzer: public Analyzer2 {
 #pragma warning( disable : 4251 ) // warning C4251: 'SerialAnalyzer::<...>' : class <...> needs to have dll-interface to be used by clients of class
 
 	protected:
-		bool AdvanceToNextEdge(U64 &pos);
-		void AdvanceOverGlitches(U64 &pos, bool &scl_edge, BitState &scl_state, bool &sda_edge, BitState &sda_state);
+		void AdvanceToNextEdge(U64 pos, AnalyzerChannelData *&channel, BitState &next);
+		void ResolveCurrentState(U64 pos, AnalyzerChannelData *&channel, BitState &next, SignalState &state);
+		void AdvanceOverGlitches(U64 &pos, SignalState &scl_state, SignalState &sda_state);
+
 		void ParseWaveform();
 		void AddFrameMarker(U64 pos, AnalyzerResults::MarkerType scl, AnalyzerResults::MarkerType sda);
 		void SubmitStart(U64 pos);
 		void SubmitStop(U64 pos);
-		void SubmitFrame(U64 pos, BitState sda_state);
+		void SubmitFrame(U64 pos, bool sda_is_high);
 		void SubmitPacket(U64 pos);
 
 		std::auto_ptr<I2cAnalyzerSettings> settings;
@@ -56,6 +66,8 @@ class I2cAnalyzer: public Analyzer2 {
 
 		AnalyzerChannelData *scl;
 		AnalyzerChannelData *sda;
+		BitState scl_next;
+		BitState sda_next;
 
 		bool seen_stop;
 		U64 pos_frame_start;

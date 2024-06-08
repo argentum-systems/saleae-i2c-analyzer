@@ -29,6 +29,9 @@ void I2cAnalyzer::WorkerThread() {
 	scl = GetAnalyzerChannelData(settings->scl_channel);
 	sda = GetAnalyzerChannelData(settings->sda_channel);
 
+	scl_next = scl->GetBitState();
+	sda_next = sda->GetBitState();
+
 	seen_stop = true;
 	pos_frame_start = 0;
 	pos_packet_start = 0;
@@ -44,67 +47,50 @@ void I2cAnalyzer::WorkerThread() {
 	}
 }
 
-bool I2cAnalyzer::AdvanceToNextEdge(U64 &pos) {
-	U64 scl_state = scl->GetSampleOfNextEdge();
-	U64 sda_state = sda->GetSampleOfNextEdge();
-
-	AnalyzerChannelData *ch_edge;
-
-	if (scl_state < sda_state) {
-		pos = scl_state;
-		ch_edge = scl;
-	} else {
-		pos = sda_state;
-		ch_edge = sda;
+void I2cAnalyzer::AdvanceToNextEdge(U64 pos, AnalyzerChannelData *&channel, BitState &next) {
+	if (pos < channel->GetSampleNumber()) {
+		return;
 	}
 
-	scl->AdvanceToAbsPosition(pos);
-	sda->AdvanceToAbsPosition(pos);
-
-	if (min_width_samples == 0) {
-		return true;
-	}
-	if (!ch_edge->WouldAdvancingCauseTransition(min_width_samples)) {
-		return true;
+	for (;;) {
+		channel->AdvanceToNextEdge();
+		if (!channel->WouldAdvancingCauseTransition(min_width_samples)) {
+			break;
+		}
+		channel->AdvanceToNextEdge();
 	}
 
-	return false;
+	next = channel->GetBitState();
 }
 
-void I2cAnalyzer::AdvanceOverGlitches(U64 &pos, bool &scl_edge, BitState &scl_state, bool &sda_edge, BitState &sda_state) {
-	BitState scl_prev = scl->GetBitState();
-	BitState sda_prev = sda->GetBitState();
-
-	/* filter glitches... note that this is not perfect, as it may find a
-	 * non-glitch edge on one signal, and then also return the anti-glitch
-	 * edge for the other signal...
-	 */
-	for (;;) {
-		bool done = AdvanceToNextEdge(pos);
-		if (done) break;
-		AdvanceToNextEdge(pos);
+void I2cAnalyzer::ResolveCurrentState(U64 pos, AnalyzerChannelData *&channel, BitState &next, SignalState &state) {
+	if (pos < channel->GetSampleNumber()) {
+		state = (next == BIT_LOW) ? SIGNAL_HIGH : SIGNAL_LOW;
+	} else {
+		state = (next == BIT_LOW) ? SIGNAL_FALLING : SIGNAL_RISING;
 	}
+}
 
-	scl_state = scl->GetBitState();
-	sda_state = sda->GetBitState();
+void I2cAnalyzer::AdvanceOverGlitches(U64 &pos, SignalState &scl_state, SignalState &sda_state) {
+	AdvanceToNextEdge(pos, scl, scl_next);
+	AdvanceToNextEdge(pos, sda, sda_next);
 
-	scl_edge = scl_prev != scl_state;
-	sda_edge = sda_prev != sda_state;
+	U64 scl_pos = scl->GetSampleNumber();
+	U64 sda_pos = sda->GetSampleNumber();
+
+	pos = (scl_pos < sda_pos) ? scl_pos : sda_pos;
+
+	ResolveCurrentState(pos, scl, scl_next, scl_state);
+	ResolveCurrentState(pos, sda, sda_next, sda_state);
 }
 
 void I2cAnalyzer::ParseWaveform() {
 	U64 pos;
-	BitState scl_state, sda_state;
-	bool scl_edge, sda_edge;
+	SignalState scl_state, sda_state;
 
-	AdvanceOverGlitches(pos, scl_edge, scl_state, sda_edge, sda_state);
+	AdvanceOverGlitches(pos, scl_state, sda_state);
 
-	if (scl_edge && sda_edge) {
-		/* unexpected... */
-		return;
-	}
-
-	if (sda_edge && (scl_state == BIT_HIGH) && (sda_state == BIT_LOW)) {
+	if ((scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_FALLING)) {
 		/* start / restart */
 		results->AddMarker(pos, AnalyzerResults::Start, settings->sda_channel);
 		byte_index = 0;
@@ -118,28 +104,30 @@ void I2cAnalyzer::ParseWaveform() {
 		SubmitPacket(pos);
 		pos_packet_start = pos;
 
-	} else if (sda_edge && (scl_state == BIT_HIGH) && (sda_state == BIT_HIGH)) {
+	} else if ((scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_RISING)) {
 		/* stop */
 		results->AddMarker(pos, AnalyzerResults::Stop, settings->sda_channel);
 
 		SubmitStop(pos);
 		SubmitPacket(pos);
 
-	} else if (scl_edge && (scl_state == BIT_HIGH)) {
+	} else if (scl_state == SIGNAL_RISING) {
+		bool sda_is_high = (sda_state == SIGNAL_RISING) || (sda_state == SIGNAL_HIGH);
+
 		/* sample point */
 		if (bit_index == 0) {
 			pos_frame_start = pos;
 		}
 
 		if (bit_index < 8) {
-			AddFrameMarker(pos, AnalyzerResults::UpArrow, (sda_state == BIT_HIGH) ? AnalyzerResults::One : AnalyzerResults::Zero);
+			AddFrameMarker(pos, AnalyzerResults::UpArrow, sda_is_high ? AnalyzerResults::One : AnalyzerResults::Zero);
 
 			bit_index += 1;
-			cur_byte = (cur_byte << 1) | (sda_state == BIT_HIGH ? 0x1 : 0x0);
+			cur_byte = (cur_byte << 1) | (sda_is_high ? 0x1 : 0x0);
 
 		} else {
-			AddFrameMarker(pos, AnalyzerResults::UpArrow, (sda_state == BIT_HIGH) ? AnalyzerResults::ErrorSquare: AnalyzerResults::Square);
-			SubmitFrame(pos, sda_state);
+			AddFrameMarker(pos, AnalyzerResults::UpArrow, sda_is_high ? AnalyzerResults::ErrorSquare: AnalyzerResults::Square);
+			SubmitFrame(pos, sda_is_high);
 			payload.push_back(cur_byte);
 
 			byte_index += 1;
@@ -177,7 +165,7 @@ void I2cAnalyzer::SubmitStop(U64 pos) {
 	seen_stop = true;
 }
 
-void I2cAnalyzer::SubmitFrame(U64 pos, BitState sda_state) {
+void I2cAnalyzer::SubmitFrame(U64 pos, bool sda_is_high) {
 	size_t n = frame_markers.size();
 	for (size_t i = 0; i < n; i += 1) {
 		results->AddMarker(frame_markers[i].pos, frame_markers[i].scl, settings->scl_channel);
@@ -190,11 +178,11 @@ void I2cAnalyzer::SubmitFrame(U64 pos, BitState sda_state) {
 	frame.mEndingSampleInclusive = pos;
 	frame.mData1 = cur_byte;
 	frame.mType = byte_index == 0 ? FRAME_TYPE_ADDRESS : FRAME_TYPE_DATA;
-	frame.mFlags = (sda_state == BIT_LOW) ? FRAME_FLAG_ACK: 0;
+	frame.mFlags = !sda_is_high ? FRAME_FLAG_ACK : 0;
 	results->AddFrame(frame);
 
 	FrameV2 framev2;
-	framev2.AddBoolean("ack", sda_state == BIT_HIGH);
+	framev2.AddBoolean("ack", !sda_is_high);
 	if (byte_index == 0) {
 		framev2.AddString("mode", "setup");
 		framev2.AddBoolean("read", cur_byte & 1 ? true : false);
