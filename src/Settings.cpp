@@ -2,7 +2,11 @@
 
 #include "Settings.h"
 
-I2cAnalyzerSettings::I2cAnalyzerSettings(): scl_channel(UNDEFINED_CHANNEL), sda_channel(UNDEFINED_CHANNEL), min_width_ns(30) {
+I2cAnalyzerSettings::I2cAnalyzerSettings():
+	scl_channel(UNDEFINED_CHANNEL),
+	sda_channel(UNDEFINED_CHANNEL),
+	min_width_ns(30)
+{
 	ClearChannels();
 
 	scl_channel_interface.reset(new AnalyzerSettingInterfaceChannel());
