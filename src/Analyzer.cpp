@@ -103,7 +103,7 @@ void I2cAnalyzer::ParseWaveform() {
 		bit_index = 0;
 
 		SubmitError(pos);
-		SubmitPacket(pos); /* submit here too, so we don't lose data on errors */
+		SubmitPacket(pos, true, true); /* submit here too, so we don't lose data on errors */
 
 	} else if (cond_start) {
 		/* start / restart */
@@ -116,7 +116,7 @@ void I2cAnalyzer::ParseWaveform() {
 		frame_markers.clear();
 
 		SubmitStart(pos);
-		SubmitPacket(pos); /* submit here too, so we don't lose data on restarts */
+		SubmitPacket(pos, true, false); /* submit here too, so we don't lose data on restarts */
 		pos_frame_start = pos; /* will be overwritten by the bit-0, if it occurs */
 		pos_packet_start = pos;
 
@@ -126,7 +126,7 @@ void I2cAnalyzer::ParseWaveform() {
 		results->AddMarker(pos, AnalyzerResults::Stop, settings->sda_channel);
 
 		SubmitStop(pos);
-		SubmitPacket(pos);
+		SubmitPacket(pos, false, false);
 
 	} else if (cond_sample) {
 		/* data sample point */
@@ -229,11 +229,13 @@ void I2cAnalyzer::SubmitFrame(U64 pos, bool sda_is_high) {
 	results->CommitResults();
 }
 
-void I2cAnalyzer::SubmitPacket(U64 pos) {
+void I2cAnalyzer::SubmitPacket(U64 pos, bool is_restart, bool has_error) {
 	if (payload.size() == 0) return;
 
 	FrameV2 framev2;
 	framev2.AddString("mode", "packet");
+	framev2.AddBoolean("restart", is_restart);
+	framev2.AddBoolean("error", has_error);
 	framev2.AddBoolean("read", payload[0] & 1 ? true : false);
 	framev2.AddByte("address", payload[0] >> 1);
 	framev2.AddByteArray("payload", &(payload[1]), payload.size()-1);

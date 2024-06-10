@@ -58,7 +58,7 @@ class I2cAnalyzer: public Analyzer2 {
 		void SubmitStop(U64 pos);
 		void SubmitError(U64 pos);
 		void SubmitFrame(U64 pos, bool sda_is_high);
-		void SubmitPacket(U64 pos);
+		void SubmitPacket(U64 pos, bool is_restart, bool has_error);
 
 		std::auto_ptr<I2cAnalyzerSettings> settings;
 		std::auto_ptr<I2cAnalyzerResults> results;
