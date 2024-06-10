@@ -92,6 +92,7 @@ void I2cAnalyzer::ParseWaveform() {
 
 	if ((scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_FALLING)) {
 		/* start / restart */
+
 		results->AddMarker(pos, AnalyzerResults::Start, settings->sda_channel);
 		byte_index = 0;
 		bit_index = 0;
@@ -106,15 +107,17 @@ void I2cAnalyzer::ParseWaveform() {
 
 	} else if ((scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_RISING)) {
 		/* stop */
+
 		results->AddMarker(pos, AnalyzerResults::Stop, settings->sda_channel);
 
 		SubmitStop(pos);
 		SubmitPacket(pos);
 
 	} else if (scl_state == SIGNAL_RISING) {
+		/* data sample point */
+
 		bool sda_is_high = (sda_state == SIGNAL_RISING) || (sda_state == SIGNAL_HIGH);
 
-		/* sample point */
 		if (bit_index == 0) {
 			pos_frame_start = pos;
 		}
