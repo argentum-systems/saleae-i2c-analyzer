@@ -105,9 +105,8 @@ void I2cAnalyzer::ParseWaveform() {
 
 		frame_markers.clear();
 
-		/* submit here too, so we don't lose data on restarts */
 		SubmitStart(pos);
-		SubmitPacket(pos);
+		SubmitPacket(pos); /* submit here too, so we don't lose data on restarts */
 		pos_packet_start = pos;
 
 	} else if (cond_stop) {
