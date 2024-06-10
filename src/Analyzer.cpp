@@ -32,6 +32,7 @@ void I2cAnalyzer::WorkerThread() {
 	scl_next = scl->GetBitState();
 	sda_next = sda->GetBitState();
 
+	seen_start = false;
 	seen_stop = true;
 	pos_frame_start = 0;
 	pos_packet_start = 0;
@@ -90,7 +91,11 @@ void I2cAnalyzer::ParseWaveform() {
 
 	AdvanceOverGlitches(pos, scl_state, sda_state);
 
-	if ((scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_FALLING)) {
+	bool cond_start  = (scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_FALLING);
+	bool cond_stop   = (scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_RISING) && seen_start;
+	bool cond_sample = (scl_state == SIGNAL_RISING) && seen_start;
+
+	if (cond_start) {
 		/* start / restart */
 
 		results->AddMarker(pos, AnalyzerResults::Start, settings->sda_channel);
@@ -105,7 +110,7 @@ void I2cAnalyzer::ParseWaveform() {
 		SubmitPacket(pos);
 		pos_packet_start = pos;
 
-	} else if ((scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_RISING)) {
+	} else if (cond_stop) {
 		/* stop */
 
 		results->AddMarker(pos, AnalyzerResults::Stop, settings->sda_channel);
@@ -113,7 +118,7 @@ void I2cAnalyzer::ParseWaveform() {
 		SubmitStop(pos);
 		SubmitPacket(pos);
 
-	} else if (scl_state == SIGNAL_RISING) {
+	} else if (cond_sample) {
 		/* data sample point */
 
 		bool sda_is_high = (sda_state == SIGNAL_RISING) || (sda_state == SIGNAL_HIGH);
@@ -155,6 +160,7 @@ void I2cAnalyzer::SubmitStart(U64 pos) {
 
 	results->CommitResults();
 
+	seen_start = true;
 	seen_stop = false;
 }
 
@@ -165,6 +171,7 @@ void I2cAnalyzer::SubmitStop(U64 pos) {
 
 	results->CommitResults();
 
+	seen_start = false;
 	seen_stop = true;
 }
 

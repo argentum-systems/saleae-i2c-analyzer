@@ -69,6 +69,7 @@ class I2cAnalyzer: public Analyzer2 {
 		BitState scl_next;
 		BitState sda_next;
 
+		bool seen_start;
 		bool seen_stop;
 		U64 pos_frame_start;
 		U64 pos_packet_start;
