@@ -5,7 +5,10 @@
 I2cAnalyzerSettings::I2cAnalyzerSettings():
 	scl_channel(UNDEFINED_CHANNEL),
 	sda_channel(UNDEFINED_CHANNEL),
-	min_width_ns(30)
+	min_width_ns(30),
+	gen_control(true),
+	gen_frames(true),
+	gen_transactions(true)
 {
 	ClearChannels();
 
@@ -27,12 +30,30 @@ I2cAnalyzerSettings::I2cAnalyzerSettings():
 	min_width_ns_interface->SetMin(0);
 	min_width_ns_interface->SetInteger(min_width_ns);
 	AddInterface(min_width_ns_interface.get());
+
+	gen_control_interface.reset(new AnalyzerSettingInterfaceBool());
+	gen_control_interface->SetTitleAndTooltip("Generate Control Info", "Add start / stop / error conditions to the data table");
+	gen_control_interface->SetValue(gen_control);
+	AddInterface(gen_control_interface.get());
+
+	gen_frames_interface.reset(new AnalyzerSettingInterfaceBool());
+	gen_frames_interface->SetTitleAndTooltip("Generate Frames", "Add address / data frames to the data table");
+	gen_frames_interface->SetValue(gen_frames);
+	AddInterface(gen_frames_interface.get());
+
+	gen_transactions_interface.reset(new AnalyzerSettingInterfaceBool());
+	gen_transactions_interface->SetTitleAndTooltip("Generate Transactions", "Add full transactions to the data table");
+	gen_transactions_interface->SetValue(gen_transactions);
+	AddInterface(gen_transactions_interface.get());
 }
 
 bool I2cAnalyzerSettings::SetSettingsFromInterfaces() {
 	scl_channel = scl_channel_interface->GetChannel();
 	sda_channel = sda_channel_interface->GetChannel();
 	min_width_ns = min_width_ns_interface->GetInteger();
+	gen_control = gen_control_interface->GetValue();
+	gen_frames = gen_frames_interface->GetValue();
+	gen_transactions = gen_transactions_interface->GetValue();
 
 	if (scl_channel == sda_channel) {
 		SetErrorText("SCL and SDA can't be assigned to the same input.");
@@ -50,6 +71,9 @@ void I2cAnalyzerSettings::UpdateInterfacesFromSettings() {
 	scl_channel_interface->SetChannel(scl_channel);
 	sda_channel_interface->SetChannel(sda_channel);
 	min_width_ns_interface->SetInteger(min_width_ns);
+	gen_control_interface->SetValue(gen_control);
+	gen_frames_interface->SetValue(gen_frames);
+	gen_transactions_interface->SetValue(gen_transactions);
 }
 
 void I2cAnalyzerSettings::LoadSettings(const char *settings) {
@@ -65,6 +89,9 @@ void I2cAnalyzerSettings::LoadSettings(const char *settings) {
 	txt >> scl_channel;
 	txt >> sda_channel;
 	txt >> min_width_ns;
+	txt >> gen_control;
+	txt >> gen_frames;
+	txt >> gen_transactions;
 
 	ClearChannels();
 	AddChannel(scl_channel, "SCL", true);
@@ -80,6 +107,9 @@ const char *I2cAnalyzerSettings::SaveSettings() {
 	txt << scl_channel;
 	txt << sda_channel;
 	txt << min_width_ns;
+	txt << gen_control;
+	txt << gen_frames;
+	txt << gen_transactions;
 
 	return SetReturnString(txt.GetString());
 }

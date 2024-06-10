@@ -164,9 +164,11 @@ void I2cAnalyzer::AddFrameMarker(U64 pos, AnalyzerResults::MarkerType scl, Analy
 }
 
 void I2cAnalyzer::SubmitStart(U64 pos) {
-	FrameV2 framev2;
-	framev2.AddString("mode", seen_stop ? "start" : "restart");
-	results->AddFrameV2(framev2, "control", pos-1, pos+1);
+	if (settings->gen_control) {
+		FrameV2 framev2;
+		framev2.AddString("mode", seen_stop ? "start" : "restart");
+		results->AddFrameV2(framev2, "control", pos-1, pos+1);
+	}
 
 	results->CommitResults();
 
@@ -175,9 +177,11 @@ void I2cAnalyzer::SubmitStart(U64 pos) {
 }
 
 void I2cAnalyzer::SubmitStop(U64 pos) {
-	FrameV2 framev2;
-	framev2.AddString("mode", "stop");
-	results->AddFrameV2(framev2, "control", pos-1, pos+1);
+	if (settings->gen_control) {
+		FrameV2 framev2;
+		framev2.AddString("mode", "stop");
+		results->AddFrameV2(framev2, "control", pos-1, pos+1);
+	}
 
 	results->CommitResults();
 
@@ -186,9 +190,11 @@ void I2cAnalyzer::SubmitStop(U64 pos) {
 }
 
 void I2cAnalyzer::SubmitError(U64 pos) {
-	FrameV2 framev2;
-	framev2.AddString("mode", "error");
-	results->AddFrameV2(framev2, "control", pos_frame_start, pos);
+	if (settings->gen_control) {
+		FrameV2 framev2;
+		framev2.AddString("mode", "error");
+		results->AddFrameV2(framev2, "control", pos_frame_start, pos);
+	}
 
 	results->AddMarker(pos, AnalyzerResults::ErrorX, settings->sda_channel);
 
@@ -214,17 +220,19 @@ void I2cAnalyzer::SubmitFrame(U64 pos, bool sda_is_high) {
 	frame.mFlags = !sda_is_high ? FRAME_FLAG_ACK : 0;
 	results->AddFrame(frame);
 
-	FrameV2 framev2;
-	framev2.AddBoolean("ack", !sda_is_high);
-	if (byte_index == 0) {
-		framev2.AddString("mode", "setup");
-		framev2.AddBoolean("read", cur_byte & 1 ? true : false);
-		framev2.AddByte("address", cur_byte >> 1);
-	} else {
-		framev2.AddString("mode", "data");
-		framev2.AddByte("data", cur_byte);
+	if (settings->gen_frames) {
+		FrameV2 framev2;
+		framev2.AddBoolean("ack", !sda_is_high);
+		if (byte_index == 0) {
+			framev2.AddString("mode", "setup");
+			framev2.AddBoolean("read", cur_byte & 1 ? true : false);
+			framev2.AddByte("address", cur_byte >> 1);
+		} else {
+			framev2.AddString("mode", "data");
+			framev2.AddByte("data", cur_byte);
+		}
+		results->AddFrameV2(framev2, "frame", pos_frame_start, pos);
 	}
-	results->AddFrameV2(framev2, "frame", pos_frame_start, pos);
 
 	results->CommitResults();
 }
@@ -232,14 +240,16 @@ void I2cAnalyzer::SubmitFrame(U64 pos, bool sda_is_high) {
 void I2cAnalyzer::SubmitPacket(U64 pos, bool is_restart, bool has_error) {
 	if (payload.size() == 0) return;
 
-	FrameV2 framev2;
-	framev2.AddString("mode", "packet");
-	framev2.AddBoolean("restart", is_restart);
-	framev2.AddBoolean("error", has_error);
-	framev2.AddBoolean("read", payload[0] & 1 ? true : false);
-	framev2.AddByte("address", payload[0] >> 1);
-	framev2.AddByteArray("payload", &(payload[1]), payload.size()-1);
-	results->AddFrameV2(framev2, "transaction", pos_packet_start, pos);
+	if (settings->gen_transactions) {
+		FrameV2 framev2;
+		framev2.AddString("mode", "packet");
+		framev2.AddBoolean("restart", is_restart);
+		framev2.AddBoolean("error", has_error);
+		framev2.AddBoolean("read", payload[0] & 1 ? true : false);
+		framev2.AddByte("address", payload[0] >> 1);
+		framev2.AddByteArray("payload", &(payload[1]), payload.size()-1);
+		results->AddFrameV2(framev2, "transaction", pos_packet_start, pos);
+	}
 
 	payload.clear();
 
