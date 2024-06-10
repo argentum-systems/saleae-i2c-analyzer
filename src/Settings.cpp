@@ -49,6 +49,7 @@ bool I2cAnalyzerSettings::SetSettingsFromInterfaces() {
 void I2cAnalyzerSettings::UpdateInterfacesFromSettings() {
 	scl_channel_interface->SetChannel(scl_channel);
 	sda_channel_interface->SetChannel(sda_channel);
+	min_width_ns_interface->SetInteger(min_width_ns);
 }
 
 void I2cAnalyzerSettings::LoadSettings(const char *settings) {
