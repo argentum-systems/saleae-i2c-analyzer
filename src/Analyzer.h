@@ -56,6 +56,7 @@ class I2cAnalyzer: public Analyzer2 {
 		void AddFrameMarker(U64 pos, AnalyzerResults::MarkerType scl, AnalyzerResults::MarkerType sda);
 		void SubmitStart(U64 pos);
 		void SubmitStop(U64 pos);
+		void SubmitError(U64 pos);
 		void SubmitFrame(U64 pos, bool sda_is_high);
 		void SubmitPacket(U64 pos);
 

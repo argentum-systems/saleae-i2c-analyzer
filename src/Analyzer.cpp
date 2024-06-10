@@ -95,7 +95,17 @@ void I2cAnalyzer::ParseWaveform() {
 	bool cond_stop   = (scl_state == SIGNAL_HIGH) && (sda_state == SIGNAL_RISING) && seen_start;
 	bool cond_sample = (scl_state == SIGNAL_RISING) && seen_start;
 
-	if (cond_start) {
+	if ((cond_start || cond_stop) && (bit_index > 1)) {
+		/* error state... can't raise an error for:
+		 *   - bit_index == 0, because that's where stop conditions occur
+		 *   - bit_index == 1, because that's where repeated start conditions occur
+		 */
+		bit_index = 0;
+
+		SubmitError(pos);
+		SubmitPacket(pos); /* submit here too, so we don't lose data on errors */
+
+	} else if (cond_start) {
 		/* start / restart */
 
 		results->AddMarker(pos, AnalyzerResults::Start, settings->sda_channel);
@@ -107,6 +117,7 @@ void I2cAnalyzer::ParseWaveform() {
 
 		SubmitStart(pos);
 		SubmitPacket(pos); /* submit here too, so we don't lose data on restarts */
+		pos_frame_start = pos; /* will be overwritten by the bit-0, if it occurs */
 		pos_packet_start = pos;
 
 	} else if (cond_stop) {
@@ -167,6 +178,19 @@ void I2cAnalyzer::SubmitStop(U64 pos) {
 	FrameV2 framev2;
 	framev2.AddString("mode", "stop");
 	results->AddFrameV2(framev2, "control", pos-1, pos+1);
+
+	results->CommitResults();
+
+	seen_start = false;
+	seen_stop = true;
+}
+
+void I2cAnalyzer::SubmitError(U64 pos) {
+	FrameV2 framev2;
+	framev2.AddString("mode", "error");
+	results->AddFrameV2(framev2, "control", pos_frame_start, pos);
+
+	results->AddMarker(pos, AnalyzerResults::ErrorX, settings->sda_channel);
 
 	results->CommitResults();
 
