@@ -79,6 +79,7 @@ class I2cAnalyzer: public Analyzer2 {
 		uint8_t bit_index;
 		uint8_t cur_byte;
 		uint16_t cur_addr; /* the full address, including r/w flag */
+		bool addr_ack; /* did the initial address frame recieve an ACK? */
 
 		std::vector<FrameMarker> frame_markers;
 		std::vector<uint8_t> payload;

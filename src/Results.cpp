@@ -72,7 +72,7 @@ void I2cAnalyzerResults::GenerateExportFile(const char *filename, DisplayBase di
 	size_t payload_len = 0;
 	char num[70];
 
-	ss << "Time (s),Read/Write,Address,Length,Data" << std::endl;
+	ss << "Time (s),Read/Write,Address,ACK/NAK,Length,Data" << std::endl;
 	AnalyzerHelpers::AppendToFile((U8*)ss.str().c_str(), (U32)ss.str().length(), f);
 	ss.str("");
 
@@ -97,6 +97,8 @@ void I2cAnalyzerResults::GenerateExportFile(const char *filename, DisplayBase di
 
 			AnalyzerHelpers::GetNumberString(cur_addr >> 1, display_base, 7, num, sizeof(num));
 			ss << num << ",";
+
+			ss << ((frame.mFlags & FRAME_FLAG_ACK) ? "ACK" : "NAK") << ",";
 
 			payload.str("");
 			payload_len = 0;

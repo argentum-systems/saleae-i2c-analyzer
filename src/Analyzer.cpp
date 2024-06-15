@@ -145,6 +145,10 @@ void I2cAnalyzer::ParseWaveform() {
 			cur_byte = (cur_byte << 1) | (sda_is_high ? 0x1 : 0x0);
 
 		} else {
+			if (byte_index == 0) {
+				addr_ack = !sda_is_high;
+			}
+
 			AddFrameMarker(pos, AnalyzerResults::UpArrow, sda_is_high ? AnalyzerResults::ErrorSquare: AnalyzerResults::Square);
 			SubmitFrame(pos, sda_is_high);
 			payload.push_back(cur_byte);
@@ -259,6 +263,7 @@ void I2cAnalyzer::SubmitPacket(U64 pos, bool is_restart, bool has_error) {
 	if (CheckFilter() && settings->gen_transactions) {
 		FrameV2 framev2;
 		framev2.AddString("mode", "packet");
+		framev2.AddBoolean("ack", addr_ack);
 		framev2.AddBoolean("restart", is_restart);
 		framev2.AddBoolean("error", has_error);
 		framev2.AddBoolean("read", payload[0] & 1 ? true : false);
