@@ -20,8 +20,6 @@ See: `./build/Analyzers/*.so`
 - Install git
 
 ```cmd.exe
-git config --global --add safe.directory "*"
-
 cmake -S . -B build
 cmake --build build --config Release
 ```
