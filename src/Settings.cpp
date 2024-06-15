@@ -6,6 +6,8 @@ I2cAnalyzerSettings::I2cAnalyzerSettings():
 	scl_channel(UNDEFINED_CHANNEL),
 	sda_channel(UNDEFINED_CHANNEL),
 	min_width_ns(30),
+	filter_address_enable(false),
+	filter_address(0),
 	gen_control(true),
 	gen_frames(true),
 	gen_transactions(true)
@@ -31,6 +33,18 @@ I2cAnalyzerSettings::I2cAnalyzerSettings():
 	min_width_ns_interface->SetInteger(min_width_ns);
 	AddInterface(min_width_ns_interface.get());
 
+	filter_address_enable_interface.reset(new AnalyzerSettingInterfaceBool());
+	filter_address_enable_interface->SetTitleAndTooltip("Filter by Address", "Only display bubbles for the nominated address");
+	filter_address_enable_interface->SetValue(filter_address_enable);
+	AddInterface(filter_address_enable_interface.get());
+
+	filter_address_interface.reset(new AnalyzerSettingInterfaceInteger());
+	filter_address_interface->SetTitleAndTooltip("Filter Address", "Nominate an address - all others will be ignored");
+	filter_address_interface->SetMax(0x7f);
+	filter_address_interface->SetMin(0x00);
+	filter_address_interface->SetInteger(filter_address);
+	AddInterface(filter_address_interface.get());
+
 	gen_control_interface.reset(new AnalyzerSettingInterfaceBool());
 	gen_control_interface->SetTitleAndTooltip("Generate Control Info", "Add start / stop / error conditions to the data table");
 	gen_control_interface->SetValue(gen_control);
@@ -50,6 +64,8 @@ I2cAnalyzerSettings::I2cAnalyzerSettings():
 bool I2cAnalyzerSettings::SetSettingsFromInterfaces() {
 	scl_channel = scl_channel_interface->GetChannel();
 	sda_channel = sda_channel_interface->GetChannel();
+	filter_address_enable = filter_address_enable_interface->GetValue();
+	filter_address = filter_address_interface->GetInteger();
 	min_width_ns = min_width_ns_interface->GetInteger();
 	gen_control = gen_control_interface->GetValue();
 	gen_frames = gen_frames_interface->GetValue();
@@ -70,6 +86,8 @@ bool I2cAnalyzerSettings::SetSettingsFromInterfaces() {
 void I2cAnalyzerSettings::UpdateInterfacesFromSettings() {
 	scl_channel_interface->SetChannel(scl_channel);
 	sda_channel_interface->SetChannel(sda_channel);
+	filter_address_enable_interface->SetValue(filter_address_enable);
+	filter_address_interface->SetInteger(filter_address);
 	min_width_ns_interface->SetInteger(min_width_ns);
 	gen_control_interface->SetValue(gen_control);
 	gen_frames_interface->SetValue(gen_frames);
@@ -88,6 +106,8 @@ void I2cAnalyzerSettings::LoadSettings(const char *settings) {
 
 	txt >> scl_channel;
 	txt >> sda_channel;
+	txt >> filter_address_enable;
+	txt >> filter_address;
 	txt >> min_width_ns;
 	txt >> gen_control;
 	txt >> gen_frames;
@@ -106,6 +126,8 @@ const char *I2cAnalyzerSettings::SaveSettings() {
 	txt << "I2CAnalyzerAttie";
 	txt << scl_channel;
 	txt << sda_channel;
+	txt << filter_address_enable;
+	txt << filter_address;
 	txt << min_width_ns;
 	txt << gen_control;
 	txt << gen_frames;

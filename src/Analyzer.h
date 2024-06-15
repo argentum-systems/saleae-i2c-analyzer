@@ -77,6 +77,7 @@ class I2cAnalyzer: public Analyzer2 {
 		size_t byte_index;
 		uint8_t bit_index;
 		uint8_t cur_byte;
+		uint16_t cur_addr; /* the full address, including r/w flag */
 
 		std::vector<FrameMarker> frame_markers;
 		std::vector<uint8_t> payload;

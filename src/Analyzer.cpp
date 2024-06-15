@@ -212,10 +212,12 @@ void I2cAnalyzer::SubmitFrame(U64 pos, bool sda_is_high) {
 	}
 	frame_markers.clear();
 
+	if (byte_index == 0) cur_addr = cur_byte;
+
 	Frame frame;
 	frame.mStartingSampleInclusive = pos_frame_start;
 	frame.mEndingSampleInclusive = pos;
-	frame.mData1 = cur_byte;
+	frame.mData1 = (cur_addr << 8) | cur_byte;
 	frame.mType = byte_index == 0 ? FRAME_TYPE_ADDRESS : FRAME_TYPE_DATA;
 	frame.mFlags = !sda_is_high ? FRAME_FLAG_ACK : 0;
 	results->AddFrame(frame);

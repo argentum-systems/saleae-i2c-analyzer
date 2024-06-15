@@ -20,6 +20,9 @@ class I2cAnalyzerSettings: public AnalyzerSettings {
 
 		U32 min_width_ns;
 
+		bool filter_address_enable;
+		U32 filter_address;
+
 		bool gen_control;
 		bool gen_frames;
 		bool gen_transactions;
@@ -28,6 +31,8 @@ class I2cAnalyzerSettings: public AnalyzerSettings {
 		std::auto_ptr<AnalyzerSettingInterfaceChannel> scl_channel_interface;
 		std::auto_ptr<AnalyzerSettingInterfaceChannel> sda_channel_interface;
 		std::auto_ptr<AnalyzerSettingInterfaceInteger> min_width_ns_interface;
+		std::auto_ptr<AnalyzerSettingInterfaceBool> filter_address_enable_interface;
+		std::auto_ptr<AnalyzerSettingInterfaceInteger> filter_address_interface;
 		std::auto_ptr<AnalyzerSettingInterfaceBool> gen_control_interface;
 		std::auto_ptr<AnalyzerSettingInterfaceBool> gen_frames_interface;
 		std::auto_ptr<AnalyzerSettingInterfaceBool> gen_transactions_interface;

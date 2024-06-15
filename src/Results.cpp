@@ -12,7 +12,14 @@ void I2cAnalyzerResults::GenerateBubbleText(U64 frame_index, Channel &channel, D
 	Frame frame = GetFrame(frame_index);
 
 	char num[64];
-	AnalyzerHelpers::GetNumberString(frame.mData1, display_base, 8, num, sizeof(num));
+	uint16_t cur_addr = (frame.mData1 >> 8) & 0xff;
+	uint8_t cur_byte = (frame.mData1 >> 0) & 0xff;
+
+	if (settings->filter_address_enable && (settings->filter_address != cur_addr)) {
+		return;
+	}
+
+	AnalyzerHelpers::GetNumberString(cur_byte, display_base, 8, num, sizeof(num));
 
 	bool has_ack = (frame.mFlags & FRAME_FLAG_ACK) ? true : false;
 	std::string ack_short = has_ack ? "A" : "N";
@@ -22,11 +29,11 @@ void I2cAnalyzerResults::GenerateBubbleText(U64 frame_index, Channel &channel, D
 	std::string mode_long = "Unknown ";
 
 	if (frame.mType == FRAME_TYPE_ADDRESS) {
-		bool is_read = (frame.mData1 & 1) ? true : false;
+		bool is_read = (cur_addr & 1) ? true : false;
 		mode_short = is_read ? "R " : "W ";
 		mode_long = is_read ? "Read " : "Write ";
 
-		AnalyzerHelpers::GetNumberString(frame.mData1 >> 1, display_base, 7, num, sizeof(num));
+		AnalyzerHelpers::GetNumberString(cur_addr >> 1, display_base, 7, num, sizeof(num));
 
 	} else if (frame.mType == FRAME_TYPE_DATA) {
 		mode_short = "";
@@ -77,6 +84,9 @@ void I2cAnalyzerResults::GenerateExportFile(const char *filename, DisplayBase di
 	for (U64 i = 0; i < num_frames; i += 1) {
 		Frame frame = GetFrame(i);
 
+		uint16_t cur_addr = (frame.mData1 >> 8) & 0xff;
+		uint8_t cur_byte = (frame.mData1 >> 0) & 0xff;
+
 		if (frame.mType == FRAME_TYPE_ADDRESS) {
 			if (ss.str().length() > 0) {
 				ss << payload_len << "," << payload.str() << std::endl;
@@ -87,10 +97,9 @@ void I2cAnalyzerResults::GenerateExportFile(const char *filename, DisplayBase di
 			AnalyzerHelpers::GetTimeString(frame.mStartingSampleInclusive, trigger_sample, sample_rate, num, sizeof(num));
 			ss << num << ",";
 
-			ss << ((frame.mData1 & 1) ? "Read" : "Write") << ",";
+			ss << ((cur_addr & 1) ? "Read" : "Write") << ",";
 
-			uint8_t addr = (uint8_t)frame.mData1 >> 1;
-			AnalyzerHelpers::GetNumberString(addr, display_base, 7, num, sizeof(num));
+			AnalyzerHelpers::GetNumberString(cur_addr >> 1, display_base, 7, num, sizeof(num));
 			ss << num << ",";
 
 			payload.str("");
@@ -103,7 +112,7 @@ void I2cAnalyzerResults::GenerateExportFile(const char *filename, DisplayBase di
 				payload << " ";
 			}
 
-			AnalyzerHelpers::GetNumberString(frame.mData1, display_base, 8, num, sizeof(num));
+			AnalyzerHelpers::GetNumberString(cur_byte, display_base, 8, num, sizeof(num));
 			payload << num;
 			payload_len += 1;
 		}
