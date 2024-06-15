@@ -34,7 +34,7 @@ I2cAnalyzerSettings::I2cAnalyzerSettings():
 	AddInterface(min_width_ns_interface.get());
 
 	filter_address_enable_interface.reset(new AnalyzerSettingInterfaceBool());
-	filter_address_enable_interface->SetTitleAndTooltip("Filter by Address", "Only display bubbles for the nominated address");
+	filter_address_enable_interface->SetTitleAndTooltip("Filter by Address", "Only decode for the nominated address");
 	filter_address_enable_interface->SetValue(filter_address_enable);
 	AddInterface(filter_address_enable_interface.get());
 

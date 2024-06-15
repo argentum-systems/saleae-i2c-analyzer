@@ -15,10 +15,6 @@ void I2cAnalyzerResults::GenerateBubbleText(U64 frame_index, Channel &channel, D
 	uint16_t cur_addr = (frame.mData1 >> 8) & 0xff;
 	uint8_t cur_byte = (frame.mData1 >> 0) & 0xff;
 
-	if (settings->filter_address_enable && (settings->filter_address != cur_addr)) {
-		return;
-	}
-
 	AnalyzerHelpers::GetNumberString(cur_byte, display_base, 8, num, sizeof(num));
 
 	bool has_ack = (frame.mFlags & FRAME_FLAG_ACK) ? true : false;

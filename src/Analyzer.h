@@ -53,6 +53,7 @@ class I2cAnalyzer: public Analyzer2 {
 		void AdvanceOverGlitches(U64 &pos, SignalState &scl_state, SignalState &sda_state);
 
 		void ParseWaveform();
+		bool CheckFilter();
 		void AddFrameMarker(U64 pos, AnalyzerResults::MarkerType scl, AnalyzerResults::MarkerType sda);
 		void SubmitStart(U64 pos);
 		void SubmitStop(U64 pos);
