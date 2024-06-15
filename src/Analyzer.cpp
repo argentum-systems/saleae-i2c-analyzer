@@ -39,6 +39,7 @@ void I2cAnalyzer::WorkerThread() {
 	byte_index = 0;
 	bit_index = 0;
 	cur_byte = 0;
+	cur_addr = 0;
 	frame_markers.clear();
 	payload.clear();
 
